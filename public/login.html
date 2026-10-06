@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign in · My Cloud Office</title>
+<style>
+:root{--bg:#f4f7f8;--card:#fff;--tx:#12303a;--mut:#6b838c;--bd:#dce6e9;--ac:#0b7a8a;--dg:#c0392b}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1a1e;--card:#162429;--tx:#e6f1f3;--mut:#8aa3ab;--bd:#274047;--ac:#3cc0d2;--dg:#ff7b6b}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:grid;grid-template-columns:1.1fr 1fr;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.hero{position:relative;overflow:hidden;padding:48px;color:#fff;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(140deg,#055766,#0b8fa3 55%,#58cfdc)}
+.hero:before,.hero:after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.09)}
+.hero:before{width:420px;height:420px;right:-120px;top:-100px}
+.hero:after{width:300px;height:300px;left:-90px;bottom:-110px}
+.hero>*{position:relative;z-index:1}
+.brand{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px}
+.hero h2{font-size:34px;line-height:1.15;margin:0 0 14px;max-width:420px}
+.hero p{margin:0 0 22px;opacity:.9;max-width:420px}
+.hero ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.hero li:before{content:"✓";display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:rgba(255,255,255,.22);margin-right:10px;font-size:13px}
+.hero small{opacity:.75}
+.side{display:flex;align-items:center;justify-content:center;padding:32px 24px calc(32px + env(safe-area-inset-bottom,0px))}
+.box{width:100%;max-width:380px}
+.mb{display:none;font-size:20px;font-weight:700;margin-bottom:22px}
+h1{margin:0 0 4px;font-size:26px}
+.sub{color:var(--mut);margin:0 0 24px}
+label{display:block;font-size:13px;font-weight:600;margin:14px 0 5px}
+.in{position:relative}
+input{width:100%;padding:12px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font:inherit}
+input:focus{outline:2px solid var(--ac);outline-offset:1px;border-color:transparent}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);cursor:pointer;padding:6px 8px;font:inherit;font-size:13px}
+button.go{width:100%;margin-top:22px;padding:13px;border:0;border-radius:10px;background:var(--ac);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.go:disabled{opacity:.6;cursor:wait}
+#err{min-height:22px;color:var(--dg);font-size:13px;margin-top:12px}
+.alt{text-align:center;margin-top:18px;color:var(--mut);font-size:14px}
+.alt a{color:var(--ac);font-weight:600;text-decoration:none;cursor:pointer}
+@media(max-width:820px){body{grid-template-columns:1fr}.hero{display:none}.mb{display:block}}
+</style></head><body>
+<section class="hero">
+ <div class="brand">☁️ My Cloud Office</div>
+ <div><h2>Your quotations, invoices and clients — in one place.</h2>
+ <p>Manage every company you run from a single, secure workspace.</p>
+ <ul><li>Quotations that convert to invoices in one click</li><li>Separate branding for each company</li><li>Dashboard with what's owed and what's paid</li><li>Print or email documents in seconds</li></ul></div>
+ <small>© My Cloud Office</small>
+</section>
+<section class="side"><form class="box" id="f" autocomplete="on">
+ <div class="mb">☁️ My Cloud Office</div>
+ <h1 id="t">Welcome back</h1><p class="sub" id="s">Sign in to continue to your workspace.</p>
+ <label for="u">Username</label><input id="u" autocomplete="username" autofocus required>
+ <label for="p">Password</label><div class="in"><input id="p" type="password" autocomplete="current-password" required><button type="button" class="eye" id="e">Show</button></div>
+ <div id="c2" hidden><label for="p2">Confirm password</label><input id="p2" type="password" autocomplete="new-password"></div>
+ <div id="err" role="alert"></div>
+ <button class="go" id="b">Sign in</button>
+ <div class="alt" id="alt" hidden></div>
+</form></section>
+<script>
+const $=s=>document.querySelector(s);let mode='login',st={setup:false,signup:false};
+fetch('/api/me').then(r=>{if(r.ok)location.replace('/')}).catch(()=>{});
+fetch('/api/status').then(r=>r.json()).then(j=>{st=j;mode=j.setup?'register':'login';draw()}).catch(()=>{$('#err').textContent='Cannot reach the server.'});
+function draw(){const r=mode==='register';
+ $('#t').textContent=r?(st.setup?'Create your account':'Create an account'):'Welcome back';
+ $('#s').textContent=r?(st.setup?'Set up the owner login for your workspace.':'Join your workspace.'):'Sign in to continue to your workspace.';
+ $('#b').textContent=r?'Create account':'Sign in';$('#c2').hidden=!r;$('#p2').required=r;
+ $('#p').autocomplete=r?'new-password':'current-password';$('#err').textContent='';
+ const a=$('#alt');a.hidden=!(st.signup&&!st.setup);
+ a.innerHTML=r?'Already have an account? <a id="sw">Sign in</a>':'New here? <a id="sw">Create an account</a>';
+ if(!a.hidden)$('#sw').onclick=()=>{mode=r?'login':'register';draw()}}
+$('#e').onclick=()=>{const p=$('#p'),h=p.type==='password';p.type=h?'text':'password';$('#e').textContent=h?'Hide':'Show'};
+$('#f').onsubmit=async e=>{e.preventDefault();const err=$('#err'),b=$('#b');err.textContent='';
+ const u=$('#u').value.trim(),p=$('#p').value;
+ if(mode==='register'){if(p.length<8){err.textContent='Password must be at least 8 characters.';return}if(p!==$('#p2').value){err.textContent='Passwords do not match.';return}}
+ b.disabled=true;
+ try{const r=await fetch('/api/'+mode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+  const j=await r.json().catch(()=>({}));
+  if(r.ok)location.replace('/');else err.textContent=j.error||'Something went wrong.'}
+ catch(x){err.textContent='Cannot reach the server.'}
+ b.disabled=false};
+</script></body></html>
