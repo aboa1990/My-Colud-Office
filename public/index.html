@@ -47,7 +47,7 @@ table.l tr.c{cursor:pointer}table.l tr.c:hover{background:var(--ac2)}
 #paper .top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 #paper img{max-height:70px;max-width:200px;display:block;margin-bottom:6px}
 #paper .m{color:#666;font-size:12px;white-space:pre-line}
-#paper .sg{margin:28px 0 0 auto;width:230px;text-align:center;break-inside:avoid}#paper .sg img{margin:0 auto}#paper .sl{border-top:1px solid #333;margin-top:4px;padding-top:4px;font-size:12px;white-space:pre-line}
+#paper .sgrow{display:flex;justify-content:flex-end;align-items:flex-end;gap:18px;margin-top:28px;break-inside:avoid}#paper .seal{max-height:110px;max-width:130px;margin:0}#paper .ds{color:#555;font-size:11px}#paper .lg{margin-bottom:12px}#paper .sg{margin:0;width:230px;text-align:center;break-inside:avoid}#paper .sg img{margin:0 auto}#paper .sl{border-top:1px solid #333;margin-top:4px;padding-top:4px;font-size:12px;white-space:pre-line}
 #paper .ft{margin-top:36px;padding-top:10px;border-top:1px solid var(--pc,#0b7a8a);text-align:center;color:#666;font-size:11px;white-space:pre-line}
 #paper.t-modern .top{background:var(--pc);color:#fff;margin:-32px -32px 20px;padding:24px 32px;border-radius:6px 6px 0 0}
 #paper.t-modern h1{color:#fff}#paper.t-modern .top .m{color:#e9f6f8}#paper.t-modern img{background:#fff;padding:4px 8px;border-radius:6px}
@@ -70,7 +70,7 @@ table.l tr.c{cursor:pointer}table.l tr.c:hover{background:var(--ac2)}
 <main id="app"><div style="padding:60px;text-align:center;color:var(--mut)">Loading…</div></main>
 <script>
 const $=s=>document.querySelector(s);
-const def={set:{name:'',addr:'',phone:'',email:'',tin:'',gst:8,cur:'MVR',bank:'',terms:'Payment due within 14 days.',logo:'',sig:'',signer:'',foot:'',tpl:'classic',color:'#0b7a8a'},clients:[],docs:[],n:{quote:0,invoice:0}};
+const def={set:{name:'',addr:'',phone:'',email:'',tin:'',gst:8,cur:'MVR',bank:'',terms:'Payment due within 14 days.',logo:'',sig:'',signer:'',desig:'',seal:'',logoPos:'left',foot:'',tpl:'classic',color:'#0b7a8a'},clients:[],docs:[],n:{quote:0,invoice:0}};
 let R,S,view='dash',cur=null,ec=null,filt='all',q='',authed=true,ver=0,sv=null,pend=false,busy=false;
 function setSt(t){const e=$('#st');if(e)e.textContent=t}
 function save(){pend=true;setSt('Saving…');clearTimeout(sv);sv=setTimeout(flush,400)}
@@ -101,14 +101,14 @@ function del(){if(confirm('Delete '+cur.no+'?')){S.docs=S.docs.filter(d=>d!==cur
 function addItem(){cur.items.push({d:'',q:1,p:0});save();render()}
 function rm(i){cur.items.splice(i,1);if(!cur.items.length)cur.items.push({d:'',q:1,p:0});save();render()}
 
-function paper(d){const s=S.set,c=cl(d.client),t=tot(d),inv=d.type==='invoice';
-return `<div class="top"><div>${s.logo?`<img src="${s.logo}" alt="">`:''}<b style="font-size:16px">${esc(s.name)||'Your Company'}</b><div class="m">${esc(s.addr)}${s.phone?'\nTel: '+esc(s.phone):''}${s.email?'\n'+esc(s.email):''}${s.tin?'\nTIN: '+esc(s.tin):''}</div></div>
+function paper(d){const s=S.set,c=cl(d.client),t=tot(d),inv=d.type==='invoice',lp=s.logoPos||'left';
+return `${s.logo&&lp!=='left'?`<div class="lg" style="text-align:${lp}"><img src="${s.logo}" alt="" style="display:inline-block"></div>`:''}<div class="top"><div>${s.logo&&lp==='left'?`<img src="${s.logo}" alt="">`:''}<b style="font-size:16px">${esc(s.name)||'Your Company'}</b><div class="m">${esc(s.addr)}${s.phone?'\nTel: '+esc(s.phone):''}${s.email?'\n'+esc(s.email):''}${s.tin?'\nTIN: '+esc(s.tin):''}</div></div>
 <div style="text-align:right"><h1>${lbl(d).toUpperCase()}</h1><div class="m"># ${esc(d.no)}\nDate: ${esc(d.date)}\n${inv?'Due':'Valid until'}: ${esc(d.due)}${d.from?'\nFrom quotation '+esc(d.from):''}</div></div></div>
 <div style="margin-top:20px"><div class="m" style="font-weight:600">BILL TO</div><b>${esc(c.name)||'—'}</b><div class="m">${esc(c.contact)}${c.addr?'\n'+esc(c.addr):''}${c.phone?'\n'+esc(c.phone):''}${c.email?'\n'+esc(c.email):''}${c.tin?'\nTIN: '+esc(c.tin):''}</div></div>
 <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Unit price</th><th class="r">Amount</th></tr>
 ${d.items.map(i=>`<tr><td>${esc(i.d)}</td><td class="r">${+i.q||0}</td><td class="r">${money(i.p)}</td><td class="r">${money((+i.q||0)*(+i.p||0))}</td></tr>`).join('')}</table>
 <div class="tt"><div><span>Subtotal</span><span>${money(t.sub)}</span></div>${+d.disc?`<div><span>Discount</span><span>- ${money(d.disc)}</span></div>`:''}<div><span>GST (${+d.gst||0}%)</span><span>${money(t.tax)}</span></div><div class="gt"><span>Total</span><span>${money(t.total)}</span></div></div>
-${d.notes?`<p class="m"><b>Notes</b>\n${esc(d.notes)}</p>`:''}${inv&&s.bank?`<p class="m"><b>Bank details</b>\n${esc(s.bank)}</p>`:''}${s.terms?`<p class="m"><b>Terms</b>\n${esc(s.terms)}</p>`:''}${s.sig||s.signer?`<div class="sg">${s.sig?`<img src="${s.sig}" alt="">`:'<div style="height:50px"></div>'}<div class="sl">${esc(s.signer)||'Authorised signature'}</div></div>`:''}${s.foot?`<div class="ft">${esc(s.foot)}</div>`:''}`}
+${d.notes?`<p class="m"><b>Notes</b>\n${esc(d.notes)}</p>`:''}${inv&&s.bank?`<p class="m"><b>Bank details</b>\n${esc(s.bank)}</p>`:''}${s.terms?`<p class="m"><b>Terms</b>\n${esc(s.terms)}</p>`:''}${s.sig||s.signer||s.desig||s.seal?`<div class="sgrow">${s.seal?`<img class="seal" src="${s.seal}" alt="">`:''}<div class="sg">${s.sig?`<img src="${s.sig}" alt="">`:'<div style="height:50px"></div>'}<div class="sl">${esc(s.signer)||'Authorised signature'}${s.desig?`<br><span class="ds">${esc(s.desig)}</span>`:''}</div></div></div>`:''}${s.foot?`<div class="ft">${esc(s.foot)}</div>`:''}`}
 
 function mailHref(){const c=cl(cur.client),t=tot(cur),L=lbl(cur);
 const body=`Dear ${c.contact||c.name||'Sir/Madam'},\n\nPlease find attached our ${L.toLowerCase()} ${cur.no} for ${money(t.total)}.\n${cur.type==='quote'?'It is valid until '+cur.due+'.':'Payment is due by '+cur.due+'.'}\n\nKind regards,\n${S.set.name}\n${S.set.phone||''}`;
@@ -159,10 +159,13 @@ if(view==='dash'){dashView(a)}else if(view==='docs'){
  <div style="margin-top:12px"><label>Footer (shown at the bottom of quotations &amp; invoices)</label><textarea rows="2" placeholder="e.g. Thank you for your business · www.example.mv · Reg. no. …" data-o="set" data-k="foot">${esc(s.foot)}</textarea></div>
  <div style="margin-top:12px"><label>Digital signature</label><div class="row">${s.sig?`<img src="${s.sig}" alt="" style="max-height:60px;max-width:180px;background:#fff;border:1px solid var(--bd);border-radius:6px">`:''}<input type="file" accept="image/*" id="sigf" style="width:auto"><button class="btn" onclick="sigPad()">✍ Draw signature</button>${s.sig?'<button class="btn d" onclick="clrSig()">Remove</button>':''}</div><div id="sigbox"></div></div>
  <div style="margin-top:12px"><label>Name &amp; title under signature</label><input data-o="set" data-k="signer" placeholder="e.g. Ahmed Ali, Managing Director" value="${esc(s.signer)}"></div>
+ <div style="margin-top:12px"><label>Designation (shown under your name)</label><input data-o="set" data-k="desig" placeholder="e.g. Managing Director" value="${esc(s.desig)}"></div>
+ <div style="margin-top:12px"><label>Company seal</label><div class="row">${s.seal?`<img src="${s.seal}" alt="" style="max-height:60px;max-width:120px;background:#fff;border:1px solid var(--bd);border-radius:6px">`:''}<input type="file" accept="image/*" id="sealf" style="width:auto">${s.seal?`<button class="btn d" onclick="clr('seal')">Remove</button>`:''}</div></div>
+ <div style="margin-top:12px"><label>Logo position on documents</label><div class="row"><select style="width:auto" data-o="set" data-k="logoPos">${[['left','Left (next to company details)'],['center','Centre (top of page)'],['right','Right (top of page)']].map(([v,l])=>`<option value="${v}" ${(s.logoPos||'left')===v?'selected':''}>${l}</option>`).join('')}</select>${s.logo?`<button class="btn" onclick="retrim()">Trim empty space around logo</button>`:''}</div></div>
  <div style="margin-top:12px"><label>Company logo</label><div class="row">${s.logo?`<img src="${s.logo}" alt="" style="max-height:60px;max-width:180px">`:''}<input type="file" accept="image/*" id="logo" style="width:auto">${s.logo?'<button class="btn d" onclick="S.set.logo=\'\';save();render()">Remove</button>':''}</div></div>
  <h2 style="margin-top:22px">Quotation &amp; invoice template</h2><div class="row">${[['classic','Classic'],['modern','Modern'],['minimal','Minimal'],['elegant','Elegant']].map(([k,l])=>`<button class="btn${(s.tpl||'classic')===k?' p':''}" onclick="setTpl('${k}')">${l}</button>`).join('')}<label style="display:flex;align-items:center;gap:8px;margin:0 0 0 8px">Accent colour <input type="color" style="width:48px;height:34px;padding:2px" data-o="set" data-k="color" value="${s.color||'#0b7a8a'}"></label></div><div id="paper" style="margin-top:12px;zoom:.72"></div>
 <div class="row" style="margin-top:16px"><button class="btn" onclick="addCo()">+ Add another company</button>${R.companies.length>1?'<button class="btn d" onclick="delCo()">Delete this company</button>':''}<button class="btn" onclick="chgPw()">Change password</button><button class="btn" onclick="bk()">Backup / import</button></div><p class="note" style="margin-top:16px">Your data is stored securely on your server and saves automatically.</p></div>`;
- sigUp();pvS();$('#logo').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,400/im.width),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);S.set.logo=c.toDataURL('image/png');save();render()};im.src=r.result};r.readAsDataURL(f)};
+ sigUp();pvS();
 }}
 function rl(){const b=$('#rows');if(!b)return;const list=S.docs.filter(d=>(filt==='all'||d.type===filt)&&(d.no+cl(d.client).name+d.status).toLowerCase().includes(q.toLowerCase()));
 b.innerHTML=list.map(d=>`<tr class="c" onclick="cur=S.docs.find(x=>x.id==='${d.id}');go('edit')"><td><b>${esc(d.no)}</b></td><td>${esc(cl(d.client).name)||'—'}</td><td>${esc(d.date)}</td><td><span class="tag">${esc(d.status)}</span></td><td style="text-align:right">${money(tot(d).total)}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--mut);padding:20px">Nothing here yet — create your first quotation.</td></tr>'}
@@ -171,7 +174,7 @@ function saveC(){if(!ec.name.trim()){alert('Please enter a client name');return}
 function delC(id){if(confirm('Delete this client?')){S.clients=S.clients.filter(c=>c.id!==id);save();render()}}
 document.addEventListener('input',e=>{const t=e.target,D=t.dataset;
  if(D.i!==undefined){cur.items[D.i][D.f]=D.f==='d'?t.value:+t.value;save();pv()}
- else if(D.o){const o={set:S.set,ec,cur}[D.o];o[D.k]=t.type==='number'?+t.value:t.value;if(D.o==='cur'&&D.k==='status'&&t.value==='Paid'&&!cur.paid)cur.paid=iso();if(D.o!=='ec')save();if(D.o==='cur')pv();if(D.o==='set'&&D.k==='name')hdr();if(D.o==='set'&&(D.k==='color'||D.k==='foot'||D.k==='signer'))pvS()}});
+ else if(D.o){const o={set:S.set,ec,cur}[D.o];o[D.k]=t.type==='number'?+t.value:t.value;if(D.o==='cur'&&D.k==='status'&&t.value==='Paid'&&!cur.paid)cur.paid=iso();if(D.o!=='ec')save();if(D.o==='cur')pv();if(D.o==='set'&&D.k==='name')hdr();if(D.o==='set'&&(D.k==='color'||D.k==='foot'||D.k==='signer'||D.k==='desig'||D.k==='logoPos'))pvS()}});
 async function logout(){if(pend){clearTimeout(sv);await flush()}try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/login.html'}
 function chgPw(){if($('#pwc'))return;$('#app').insertAdjacentHTML('beforeend','<div class="card" id="pwc"><h2>Change password</h2><div class="grid"><div><label>Current password</label><input type="password" id="pw0" autocomplete="current-password"></div><div><label>New password (min. 8 characters)</label><input type="password" id="pw1" autocomplete="new-password"></div></div><div class="row" style="margin-top:12px"><button class="btn p" onclick="savePw()">Update password</button></div></div>');$('#pwc').scrollIntoView()}
 async function savePw(){const r=await fetch('/api/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current:$('#pw0').value,next:$('#pw1').value})});const j=await r.json().catch(()=>({}));if(r.ok){$('#pwc').remove();alert('Password changed')}else alert(j.error||'Could not change password')}
@@ -193,8 +196,17 @@ ${S.set.name?'':'<div class="note">Add your company details and logo in <b>Setti
 ${S.docs.slice(0,6).map(d=>`<tr class="c" onclick="cur=S.docs.find(x=>x.id==='${d.id}');go('edit')"><td><b>${esc(d.no)}</b></td><td>${esc(cl(d.client).name)||'—'}</td><td><span class="tag">${esc(d.status)}</span></td><td style="text-align:right">${money(tot(d).total)}</td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--mut)">No documents yet — create your first quotation.</td></tr>'}</table></div></div>`}
 function pvS(){const p=$('#paper');if(!p)return;const d={type:'quote',no:'QT-0001',client:(S.clients[0]||{}).id||'',date:iso(),due:plus(30),items:[{d:'Sample service',q:2,p:1500},{d:'Another item',q:1,p:850}],disc:0,gst:S.set.gst,notes:'Sample preview of your quotation.',status:'Draft'};p.className='t-'+(S.set.tpl||'classic');p.style.setProperty('--pc',S.set.color||'#0b7a8a');p.innerHTML=paper(d)}
 function setTpl(k){S.set.tpl=k;save();render()}
+function clr(k){S.set[k]='';save();render()}
+function retrim(){trimImg(S.set.logo,false,u=>{S.set.logo=u;S.set.logoT=true;save();render()})}
+function upImg(id,key,clean){const el=$(id);if(!el)return;el.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>trimImg(r.result,clean,u=>{S.set[key]=u;if(key==='logo')S.set.logoT=true;save();render()});r.readAsDataURL(f)}}
+function trimImg(url,clean,cb){const im=new Image();im.onload=()=>{const k=Math.min(1,500/im.width),w=Math.max(1,Math.round(im.width*k)),h=Math.max(1,Math.round(im.height*k)),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(im,0,0,w,h);
+const d=x.getImageData(0,0,w,h),p=d.data;
+if(clean)for(let i=0;i<p.length;i+=4){const l=(p[i]+p[i+1]+p[i+2])/3;if(l>238)p[i+3]=0;else if(l>200)p[i+3]=Math.round(p[i+3]*(238-l)/38)}
+let x0=w,y0=h,x1=-1,y1=-1;for(let j=0;j<h;j++)for(let i=0;i<w;i++){const o=(j*w+i)*4,a=p[o+3],l=(p[o]+p[o+1]+p[o+2])/3;if(a>20&&!(a>=250&&l>245)){if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}}
+x.putImageData(d,0,0);if(x1<x0){cb(c.toDataURL('image/png'));return}
+const o=document.createElement('canvas');o.width=x1-x0+1;o.height=y1-y0+1;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);cb(o.toDataURL('image/png'))};im.src=url}
 function clrSig(){S.set.sig='';save();render()}
-function sigUp(){$('#sigf').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,400/im.width),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);S.set.sig=c.toDataURL('image/png');save();render()};im.src=r.result};r.readAsDataURL(f)}}
+function sigUp(){upImg('#sigf','sig',true);upImg('#sealf','seal',true);upImg('#logo','logo',false)}
 function sigPad(){const b=$('#sigbox');b.innerHTML='<canvas id="sc" width="360" height="140" style="width:100%;max-width:360px;height:140px;background:#fff;border:1px solid var(--bd);border-radius:8px;touch-action:none;display:block;margin:10px 0"></canvas><div class="row"><button class="btn p" id="ss">Use this signature</button><button class="btn" id="sx">Clear</button></div>';
 const c=$('#sc'),x=c.getContext('2d');x.lineWidth=2.2;x.lineCap='round';x.strokeStyle='#111';let dn=false,ink=false;
 const pt=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
@@ -208,6 +220,6 @@ function bkImp(){try{const o=JSON.parse($('#bkt').value);if(!Array.isArray(o.com
 function fresh(){const c=JSON.parse(JSON.stringify(def));c.id=uid();return{active:c.id,companies:[c]}}
 (async()=>{try{const r=await fetch('/api/data');if(r.status===401){location.href='/login.html';return}const j=await r.json();ver=j.ver;
  if(j.data&&Array.isArray(j.data.companies)&&j.data.companies.length){R=j.data;R.companies.forEach(c=>c.set=Object.assign({},def.set,c.set))}else R=fresh();
- S=R.companies.find(c=>c.id===R.active)||R.companies[0];render()}
+ S=R.companies.find(c=>c.id===R.active)||R.companies[0];render();R.companies.forEach(c=>{if(c.set.logo&&!c.set.logoT)trimImg(c.set.logo,false,u=>{c.set.logo=u;c.set.logoT=true;save();render()})})}
  catch(e){$('#app').innerHTML='<div class="note">Cannot reach the server. Please refresh the page.</div>'}})();
 </script></body></html>
