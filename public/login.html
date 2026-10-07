@@ -56,7 +56,7 @@ button.go:disabled{opacity:.6;cursor:wait}
 <script>
 const $=s=>document.querySelector(s);let mode='login',st={setup:false,signup:false};
 fetch('/api/me').then(r=>{if(r.ok)location.replace('/')}).catch(()=>{});
-fetch('/api/status').then(r=>r.json()).then(j=>{st=j;mode=j.setup?'register':'login';draw()}).catch(()=>{$('#err').textContent='Cannot reach the server.'});
+fetch('/api/status').then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok){$('#err').textContent=j.error||'Server error ('+r.status+').';return}st=j;mode=j.setup?'register':'login';draw()}).catch(()=>{$('#err').textContent='Cannot reach the server.'});
 function draw(){const r=mode==='register';
  $('#t').textContent=r?(st.setup?'Create your account':'Create an account'):'Welcome back';
  $('#s').textContent=r?(st.setup?'Set up the owner login for your workspace.':'Join your workspace.'):'Sign in to continue to your workspace.';

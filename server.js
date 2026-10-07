@@ -7,11 +7,11 @@ if (!DB_URL) console.error('DATABASE_URL is not set. Add a Postgres database and
 const local = /localhost|127\.0\.0\.1/.test(DB_URL);
 const pool = new Pool({ connectionString: DB_URL, max: 3, ssl: local || /sslmode=/.test(DB_URL) ? undefined : { rejectUnauthorized: false } });
 const db = (text, params) => pool.query(text, params);
-const ready = db(`
+let ready = null;
+const init = () => ready || (ready = db(`
 CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL, created BIGINT);
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires BIGINT NOT NULL);
-CREATE TABLE IF NOT EXISTS data(user_id INTEGER PRIMARY KEY, json TEXT NOT NULL, ver INTEGER NOT NULL DEFAULT 0, updated BIGINT);`);
-ready.catch(e => console.error('Database setup failed:', e.message));
+CREATE TABLE IF NOT EXISTS data(user_id INTEGER PRIMARY KEY, json TEXT NOT NULL, ver INTEGER NOT NULL DEFAULT 0, updated BIGINT);`).catch(e => { ready = null; console.error('Database setup failed:', e.message); throw e; }));
 
 const hashPw = (p, salt) => crypto.scryptSync(p, salt, 64).toString('hex');
 const sha = t => crypto.createHash('sha256').update(t).digest('hex');
@@ -41,7 +41,15 @@ const app = express();
 app.disable('x-powered-by'); app.set('trust proxy', 1);
 app.use(express.json({ limit: '4mb' }));
 app.use((q, s, n) => { s.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin' }); n(); });
-app.use('/api', (q, s, n) => ready.then(() => n(), n));
+app.get('/api/health', ah(async (q, s) => {
+  if (!DB_URL) return s.status(503).json({ database: 'not configured', hint: 'DATABASE_URL is missing' });
+  try { await init(); await db('SELECT 1'); s.json({ database: 'connected' }); }
+  catch (e) { s.status(503).json({ database: 'error', hint: e.code || 'could not connect' }); }
+}));
+app.use('/api', (q, s, n) => {
+  if (!DB_URL) return s.status(503).json({ error: 'The database is not connected yet. Add a Postgres database to this project (DATABASE_URL) and redeploy.' });
+  init().then(() => n(), n);
+});
 
 app.get('/api/status', ah(async (q, s) => s.json({ setup: (await userCount()) === 0, signup: SIGNUP })));
 app.post('/api/register', limit, ah(async (q, s) => {
@@ -90,7 +98,12 @@ app.put('/api/data', auth, ah(async (q, s) => {
 const pub = path.join(__dirname, 'public');
 app.get(['/', '/index.html'], ah(async (q, s) => (await uidOf(q)) ? s.sendFile(path.join(pub, 'index.html')) : s.redirect('/login.html')));
 app.use(express.static(pub, { index: false }));
-app.use((e, q, s, n) => { if (e.status !== 413) console.error(e); s.status(e.status || 500).json({ error: e.status === 413 ? 'Data too large (try a smaller logo or signature).' : 'Server error' }); });
+app.use((e, q, s, n) => {
+  if (e.status === 413) return s.status(413).json({ error: 'Data too large (try a smaller logo or signature).' });
+  console.error(e);
+  const dbErr = /ECONN|ENOTFOUND|ETIMEDOUT|28P01|3D000|SSL|self.signed|authentication/i.test((e.code || '') + ' ' + (e.message || ''));
+  s.status(dbErr ? 503 : 500).json({ error: dbErr ? 'Cannot connect to the database. Check that DATABASE_URL is correct.' : 'Server error' });
+});
 
 if (require.main === module) app.listen(PORT, () => console.log('My Cloud Office running on port ' + PORT));
 module.exports = app;
