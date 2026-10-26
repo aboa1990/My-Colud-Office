@@ -33,6 +33,7 @@ table.l tr.c{cursor:pointer}table.l tr.c:hover{background:var(--ac2)}
 .edit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}
 @media(max-width:860px){.edit{grid-template-columns:1fr}}
 .it{display:grid;grid-template-columns:1fr 70px 100px 32px;gap:6px;margin-bottom:6px}
+.ex{display:grid;grid-template-columns:1fr 110px 100px 32px;gap:6px;margin-bottom:6px}@media(max-width:520px){.ex{grid-template-columns:1fr 1fr 32px}.ex input:first-child{grid-column:1/-1}}
 .big{font-size:24px;font-weight:700;margin:2px 0}.bars{display:flex;gap:10px}.bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--mut)}.bars .w{height:110px;width:100%;display:flex;align-items:flex-end}.bars i{display:block;width:100%;background:var(--ac);border-radius:6px 6px 0 0;min-height:2px}
 .note{background:var(--ac2);color:var(--ac);padding:10px 14px;border-radius:10px;margin-bottom:14px}
 #paper{background:#fff;color:#111;padding:32px;border-radius:6px;border:1px solid var(--bd);font-size:13px;min-height:480px}
@@ -91,6 +92,8 @@ const plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d)};
 const tot=d=>{const sub=d.items.reduce((a,i)=>a+(+i.q||0)*(+i.p||0),0);const af=Math.max(0,sub-(+d.disc||0));const tax=af*(+d.gst||0)/100;return{sub,af,tax,total:af+tax}};
 const cl=id=>S.clients.find(c=>c.id===id)||{};
 const lbl=d=>d.type==='quote'?'Quotation':'Invoice';
+const xt=d=>(d.exp||[]).reduce((a,e)=>a+(+e.a||0),0);
+const CATS=['Materials','Supplier','Transport','Labour','Other'];
 
 function go(v){view=v;cur=v==='edit'?cur:null;ec=null;render()}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>go(b.dataset.v));
@@ -99,6 +102,10 @@ function newDoc(type){S.n[type]++;const d={id:uid(),type,no:(type==='quote'?'QT-
 function convert(){const o=cur;S.n.invoice++;const inv=JSON.parse(JSON.stringify(o));Object.assign(inv,{id:uid(),type:'invoice',no:'INV-'+String(S.n.invoice).padStart(4,'0'),date:iso(),due:plus(14),status:'Unpaid',from:o.no});o.status='Converted';o.inv=inv.no;S.docs.unshift(inv);save();cur=inv;go('edit')}
 function del(){if(confirm('Delete '+cur.no+'?')){S.docs=S.docs.filter(d=>d!==cur);save();go('docs')}}
 function addItem(){cur.items.push({d:'',q:1,p:0});save();render()}
+function addExp(){(cur.exp=cur.exp||[]).push({d:'',c:'Materials',a:0});save();render()}
+function rmExp(i){cur.exp.splice(i,1);save();render()}
+function pfv(){const e=$('#pf');if(!e)return;const t=tot(cur),x=xt(cur),p=t.af-x,m=t.af?p/t.af*100:0;
+e.innerHTML=`<div class="grid" style="margin-top:12px"><div><label>Income (before GST)</label><b>${money(t.af)}</b></div><div><label>Total expenses</label><b>${money(x)}</b></div><div><label>Profit</label><b style="${p<0?'color:var(--dg)':''}">${money(p)}</b></div><div><label>Margin</label><b>${m.toFixed(1)}%</b></div></div>`}
 function rm(i){cur.items.splice(i,1);if(!cur.items.length)cur.items.push({d:'',q:1,p:0});save();render()}
 
 function paper(d){const s=S.set,c=cl(d.client),t=tot(d),inv=d.type==='invoice',lp=s.logoPos||'left';
@@ -113,7 +120,7 @@ ${d.notes?`<p class="m"><b>Notes</b>\n${esc(d.notes)}</p>`:''}${inv&&s.bank?`<p 
 function mailHref(){const c=cl(cur.client),t=tot(cur),L=lbl(cur);
 const body=`Dear ${c.contact||c.name||'Sir/Madam'},\n\nPlease find attached our ${L.toLowerCase()} ${cur.no} for ${money(t.total)}.\n${cur.type==='quote'?'It is valid until '+cur.due+'.':'Payment is due by '+cur.due+'.'}\n\nKind regards,\n${S.set.name}\n${S.set.phone||''}`;
 return 'mailto:'+encodeURIComponent(c.email||'')+'?subject='+encodeURIComponent(L+' '+cur.no+' from '+S.set.name)+'&body='+encodeURIComponent(body)}
-function pv(){const p=$('#paper');if(!p)return;p.className='t-'+(S.set.tpl||'classic');p.style.setProperty('--pc',S.set.color||'#0b7a8a');p.innerHTML=paper(cur);const m=$('#mail');if(m)m.href=mailHref()}
+function pv(){const p=$('#paper');if(!p)return;p.className='t-'+(S.set.tpl||'classic');p.style.setProperty('--pc',S.set.color||'#0b7a8a');p.innerHTML=paper(cur);const m=$('#mail');if(m)m.href=mailHref();pfv()}
 
 function render(){
 hdr();
@@ -125,7 +132,7 @@ if(view==='dash'){dashView(a)}else if(view==='docs'){
  <div class="card"><div class="row" style="margin-bottom:14px"><button class="btn p" onclick="newDoc('quote')">+ New quotation</button><button class="btn p" onclick="newDoc('invoice')">+ New invoice</button>
  <select style="width:auto" onchange="filt=this.value;render()"><option value="all">All</option><option value="quote">Quotations</option><option value="invoice">Invoices</option></select>
  <input style="flex:1;min-width:140px" placeholder="Search…" value="${esc(q)}" oninput="q=this.value;rl()"></div>
- <div class="wrap"><table class="l"><tr><th>No.</th><th>Client</th><th>Date</th><th>Status</th><th style="text-align:right">Total</th></tr><tbody id="rows"></tbody></table></div></div>`;
+ <div class="wrap"><table class="l"><tr><th>No.</th><th>Client</th><th>Date</th><th>Status</th><th style="text-align:right">Total</th><th style="text-align:right">Profit</th></tr><tbody id="rows"></tbody></table></div></div>`;
  $('select').value=filt;rl();
 }else if(view==='edit'){
  const d=cur,inv=d.type==='invoice',st=inv?['Unpaid','Paid']:['Draft','Sent','Accepted','Declined','Converted'];
@@ -142,6 +149,9 @@ if(view==='dash'){dashView(a)}else if(view==='docs'){
  <button class="btn" onclick="addItem()">+ Add item</button>
  <div class="grid" style="margin-top:14px"><div><label>Discount (${esc(S.set.cur)})</label><input type="number" min="0" step="any" data-o="cur" data-k="disc" value="${d.disc||0}"></div><div><label>GST %</label><input type="number" min="0" step="any" data-o="cur" data-k="gst" value="${d.gst}"></div></div>
  <div style="margin-top:12px"><label>Notes</label><textarea rows="3" data-o="cur" data-k="notes">${esc(d.notes)}</textarea></div>
+ ${inv?`<h2 style="margin-top:18px">Expenses <span class="tag">internal – not printed</span></h2>
+ ${(d.exp||[]).map((e,n)=>`<div class="ex"><input placeholder="What was it for?" data-x="${n}" data-f="d" value="${esc(e.d)}"><select data-x="${n}" data-f="c">${CATS.map(c=>`<option ${c===e.c?'selected':''}>${c}</option>`).join('')}</select><input type="number" min="0" step="any" placeholder="Amount" data-x="${n}" data-f="a" value="${e.a||''}"><button class="btn d" onclick="rmExp(${n})" aria-label="Remove">×</button></div>`).join('')}
+ <button class="btn" onclick="addExp()">+ Add expense</button><div id="pf"></div>`:''}
  <p class="note" style="margin:14px 0 0">Email opens your mail app with the message ready. Use Print → “Save as PDF” to attach the document.</p></div>
  <div id="paper"></div></div>`;pv();
 }else if(view==='clients'){
@@ -168,12 +178,13 @@ if(view==='dash'){dashView(a)}else if(view==='docs'){
  sigUp();pvS();
 }}
 function rl(){const b=$('#rows');if(!b)return;const list=S.docs.filter(d=>(filt==='all'||d.type===filt)&&(d.no+cl(d.client).name+d.status).toLowerCase().includes(q.toLowerCase()));
-b.innerHTML=list.map(d=>`<tr class="c" onclick="cur=S.docs.find(x=>x.id==='${d.id}');go('edit')"><td><b>${esc(d.no)}</b></td><td>${esc(cl(d.client).name)||'—'}</td><td>${esc(d.date)}</td><td><span class="tag">${esc(d.status)}</span></td><td style="text-align:right">${money(tot(d).total)}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--mut);padding:20px">Nothing here yet — create your first quotation.</td></tr>'}
+b.innerHTML=list.map(d=>`<tr class="c" onclick="cur=S.docs.find(x=>x.id==='${d.id}');go('edit')"><td><b>${esc(d.no)}</b></td><td>${esc(cl(d.client).name)||'—'}</td><td>${esc(d.date)}</td><td><span class="tag">${esc(d.status)}</span></td><td style="text-align:right">${money(tot(d).total)}</td><td style="text-align:right">${d.type==='invoice'&&d.exp&&d.exp.length?money(tot(d).af-xt(d)):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--mut);padding:20px">Nothing here yet — create your first quotation.</td></tr>'}
 function editC(id){ec=Object.assign({},cl(id));render()}
 function saveC(){if(!ec.name.trim()){alert('Please enter a client name');return}const isNew=ec.isNew;delete ec.isNew;if(isNew)S.clients.push(ec);else S.clients=S.clients.map(c=>c.id===ec.id?ec:c);save();ec=null;render()}
 function delC(id){if(confirm('Delete this client?')){S.clients=S.clients.filter(c=>c.id!==id);save();render()}}
 document.addEventListener('input',e=>{const t=e.target,D=t.dataset;
  if(D.i!==undefined){cur.items[D.i][D.f]=D.f==='d'?t.value:+t.value;save();pv()}
+ else if(D.x!==undefined){const e=cur.exp[D.x];e[D.f]=D.f==='a'?+t.value:t.value;save();pfv()}
  else if(D.o){const o={set:S.set,ec,cur}[D.o];o[D.k]=t.type==='number'?+t.value:t.value;if(D.o==='cur'&&D.k==='status'&&t.value==='Paid'&&!cur.paid)cur.paid=iso();if(D.o!=='ec')save();if(D.o==='cur')pv();if(D.o==='set'&&D.k==='name')hdr();if(D.o==='set'&&(D.k==='color'||D.k==='foot'||D.k==='signer'||D.k==='desig'||D.k==='logoPos'))pvS()}});
 async function logout(){if(pend){clearTimeout(sv);await flush()}try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/login.html'}
 function chgPw(){if($('#pwc'))return;$('#app').insertAdjacentHTML('beforeend','<div class="card" id="pwc"><h2>Change password</h2><div class="grid"><div><label>Current password</label><input type="password" id="pw0" autocomplete="current-password"></div><div><label>New password (min. 8 characters)</label><input type="password" id="pw1" autocomplete="new-password"></div></div><div class="row" style="margin-top:12px"><button class="btn p" onclick="savePw()">Update password</button></div></div>');$('#pwc').scrollIntoView()}
@@ -184,14 +195,16 @@ function addCo(){const n=prompt('Company name');if(!n||!n.trim()){hdr();return}c
 function delCo(){if(R.companies.length<2)return;if(confirm('Delete "'+(S.set.name||'this company')+'" with all its clients and documents? This cannot be undone.')){R.companies=R.companies.filter(c=>c!==S);S=R.companies[0];R.active=S.id;save();view='dash';render()}}
 function dashView(a){const td=iso(),m=td.slice(0,7),inv=S.docs.filter(d=>d.type==='invoice'),qt=S.docs.filter(d=>d.type==='quote');
 const sum=l=>l.reduce((x,d)=>x+tot(d).total,0),unpaid=inv.filter(d=>d.status!=='Paid'),over=unpaid.filter(d=>d.due<td),open=qt.filter(d=>d.status==='Draft'||d.status==='Sent');
-const pd=d=>(d.paid||d.date).slice(0,7),paid=inv.filter(d=>d.status==='Paid'),mo=[];
-for(let i=5;i>=0;i--){const x=new Date();x.setDate(15);x.setMonth(x.getMonth()-i);const k=iso(x).slice(0,7);mo.push({l:x.toLocaleString('en',{month:'short'}),v:sum(paid.filter(d=>pd(d)===k))})}
-const mx=Math.max(1,...mo.map(x=>x.v)),h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+const pd=d=>(d.paid||d.date).slice(0,7),paid=inv.filter(d=>d.status==='Paid'),mo=[],pI=l=>l.reduce((x,d)=>x+tot(d).af,0),pX=l=>l.reduce((x,d)=>x+xt(d),0);
+for(let i=5;i>=0;i--){const x=new Date();x.setDate(15);x.setMonth(x.getMonth()-i);const k=iso(x).slice(0,7);const pk=paid.filter(d=>pd(d)===k);mo.push({l:x.toLocaleString('en',{month:'short'}),v:sum(pk),p:pI(pk)-pX(pk)})}
+const mx=Math.max(1,...mo.map(x=>x.v)),mp=Math.max(1,...mo.map(x=>x.p)),pm=paid.filter(d=>pd(d)===m),pmI=pI(pm),pmP=pmI-pX(pm),noex=paid.filter(d=>!(d.exp&&d.exp.length)).length,h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
 const stat=(t,v,s,c)=>`<div class="card" style="margin:0"><div style="color:var(--mut);font-size:12px">${t}</div><div class="big"${c?' style="color:var(--dg)"':''}>${v}</div><div style="color:var(--mut);font-size:12px">${s}</div></div>`;
 a.innerHTML=`<div class="row" style="margin-bottom:16px"><div style="margin-right:auto"><h2 style="margin:0">${g} 👋</h2><div style="color:var(--mut)">${esc(S.set.name)||'Your company'} · ${td}</div></div><button class="btn p" onclick="newDoc('quote')">+ Quotation</button><button class="btn p" onclick="newDoc('invoice')">+ Invoice</button><button class="btn" onclick="go('clients')">+ Client</button></div>
 ${S.set.name?'':'<div class="note">Add your company details and logo in <b>Settings</b> to get started.</div>'}
 <div class="grid" style="margin-bottom:16px">${stat('Outstanding',money(sum(unpaid)),unpaid.length+' unpaid invoice'+(unpaid.length==1?'':'s'))}${stat('Overdue',money(sum(over)),over.length+' past due date',over.length)}${stat('Paid this month',money(sum(paid.filter(d=>pd(d)===m))),paid.length+' paid in total')}${stat('Open quotations',open.length,money(sum(open))+' pending')}</div>
+<div class="grid" style="margin-bottom:16px">${stat('Income this month',money(pmI),'paid invoices, before GST')}${stat('Expenses this month',money(pX(pm)),'on those invoices')}${stat('Profit this month',money(pmP),(pmI?Math.round(pmP/pmI*100):0)+'% margin',pmP<0)}${stat('Profit all time',money(pI(paid)-pX(paid)),noex+' paid invoice'+(noex==1?'':'s')+' without expenses')}</div>
 <div class="card"><h2>Paid invoices · last 6 months</h2><div class="bars">${mo.map(x=>`<div class="b"><span>${x.v?Math.round(x.v).toLocaleString():'&nbsp;'}</span><div class="w"><i style="height:${Math.round(x.v/mx*100)}%"></i></div><span>${x.l}</span></div>`).join('')}</div></div>
+<div class="card"><h2>Profit · last 6 months</h2><div class="bars">${mo.map(x=>`<div class="b"><span>${x.p?Math.round(x.p).toLocaleString():'&nbsp;'}</span><div class="w"><i style="height:${Math.round(Math.max(0,x.p)/mp*100)}%;${x.p<0?'background:var(--dg)':''}"></i></div><span>${x.l}</span></div>`).join('')}</div></div>
 <div class="card"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;margin-right:auto">Recent documents</h2><button class="btn" onclick="go('docs')">View all</button></div><div class="wrap"><table class="l"><tr><th>No.</th><th>Client</th><th>Status</th><th style="text-align:right">Total</th></tr>
 ${S.docs.slice(0,6).map(d=>`<tr class="c" onclick="cur=S.docs.find(x=>x.id==='${d.id}');go('edit')"><td><b>${esc(d.no)}</b></td><td>${esc(cl(d.client).name)||'—'}</td><td><span class="tag">${esc(d.status)}</span></td><td style="text-align:right">${money(tot(d).total)}</td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--mut)">No documents yet — create your first quotation.</td></tr>'}</table></div></div>`}
 function pvS(){const p=$('#paper');if(!p)return;const d={type:'quote',no:'QT-0001',client:(S.clients[0]||{}).id||'',date:iso(),due:plus(30),items:[{d:'Sample service',q:2,p:1500},{d:'Another item',q:1,p:850}],disc:0,gst:S.set.gst,notes:'Sample preview of your quotation.',status:'Draft'};p.className='t-'+(S.set.tpl||'classic');p.style.setProperty('--pc',S.set.color||'#0b7a8a');p.innerHTML=paper(d)}
